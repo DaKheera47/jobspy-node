@@ -1,6 +1,7 @@
 import type { SiteScraper } from "../core/types";
 import type { NormalizedScrapeJobsInput, Site } from "../types";
 import { indeedScraper } from "./indeed";
+import { linkedinScraper } from "./linkedin";
 
 function createNotImplementedScraper(site: Site): SiteScraper {
   return {
@@ -16,7 +17,7 @@ function createNotImplementedScraper(site: Site): SiteScraper {
 }
 
 export const siteScrapers: Record<Site, SiteScraper> = {
-  linkedin: createNotImplementedScraper("linkedin"),
+  linkedin: linkedinScraper,
   indeed: indeedScraper,
   zip_recruiter: createNotImplementedScraper("zip_recruiter"),
   glassdoor: createNotImplementedScraper("glassdoor"),
