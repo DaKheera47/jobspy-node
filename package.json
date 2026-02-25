@@ -12,6 +12,7 @@
     "dev": "vitest",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:smoke": "LIVE_SCRAPE=1 vitest run test/smoke/live.test.ts",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
@@ -32,6 +33,10 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./utils": {
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
