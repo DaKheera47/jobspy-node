@@ -1,3 +1,4 @@
+/* eslint-env node */
 import { writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -19,7 +20,7 @@ const parseNumber = (value, fallback) => {
 };
 
 const config = {
-  siteName: parseList(process.env.SITES, ["indeed"]),
+  siteName: parseList(process.env.SITES, ["glassdoor"]),
   searchTerm: process.env.SEARCH_TERM ?? "software engineer",
   location: process.env.LOCATION ?? "San Francisco, CA",
   resultsWanted: parseNumber(process.env.RESULTS_WANTED, 5),
@@ -52,6 +53,13 @@ if (result.errors.length > 0) {
     console.log(
       `- [${error.site}] ${error.code}: ${error.message} (retriable=${error.retriable})`,
     );
+  }
+}
+
+if ((result.meta.warnings?.length ?? 0) > 0) {
+  console.log("\nWarnings:");
+  for (const warning of result.meta.warnings) {
+    console.log(`- ${warning}`);
   }
 }
 
