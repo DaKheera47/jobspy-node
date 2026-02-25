@@ -98,35 +98,43 @@ export interface IndeedCountryConfig {
   domainPrefix: string;
 }
 
-const COUNTRY_MAP: Record<string, IndeedCountryConfig> = {
-  USA: { countryInput: "USA", coHeader: "us", domainPrefix: "www" },
-  US: { countryInput: "US", coHeader: "us", domainPrefix: "www" },
-  CANADA: { countryInput: "CANADA", coHeader: "ca", domainPrefix: "ca" },
-  CA: { countryInput: "CA", coHeader: "ca", domainPrefix: "ca" },
-  UK: { countryInput: "UK", coHeader: "gb", domainPrefix: "uk" },
-  "UNITED KINGDOM": {
-    countryInput: "UNITED KINGDOM",
-    coHeader: "gb",
-    domainPrefix: "uk",
-  },
-  INDIA: { countryInput: "INDIA", coHeader: "in", domainPrefix: "in" },
-  IN: { countryInput: "IN", coHeader: "in", domainPrefix: "in" },
+const COUNTRY_VALUE_MAP: Record<string, string> = {
+  USA: "www:us",
+  US: "www:us",
+  "UNITED STATES": "www:us",
+  CANADA: "ca",
+  CA: "ca",
+  UK: "uk:gb",
+  "UNITED KINGDOM": "uk:gb",
+  INDIA: "in",
+  IN: "in",
+  MEXICO: "mx",
+  MX: "mx",
+  GERMANY: "de",
+  DE: "de",
+  FRANCE: "fr",
+  FR: "fr",
 };
 
 export function resolveIndeedCountryConfig(
   countryInput: string | undefined,
 ): IndeedCountryConfig {
   const normalized = (countryInput ?? "USA").trim().toUpperCase();
-  const mapped = COUNTRY_MAP[normalized];
-  if (mapped) {
-    return mapped;
-  }
+  const fallbackTwoLetter =
+    normalized.replace(/[^A-Z]/g, "").slice(0, 2).toLowerCase() || "us";
+  const encodedValue =
+    COUNTRY_VALUE_MAP[normalized] ?? fallbackTwoLetter;
 
-  const twoLetter = normalized.replace(/[^A-Z]/g, "").slice(0, 2).toLowerCase();
+  const [subdomainRaw, apiCodeRaw] = encodedValue.includes(":")
+    ? encodedValue.split(":", 2)
+    : [encodedValue, encodedValue];
+
+  const subdomain = subdomainRaw || "www";
+  const apiCode = (apiCodeRaw || subdomain || "us").toUpperCase();
+
   return {
     countryInput: normalized,
-    coHeader: twoLetter || "us",
-    domainPrefix: twoLetter || "www",
+    coHeader: apiCode,
+    domainPrefix: subdomain.toLowerCase(),
   };
 }
-
