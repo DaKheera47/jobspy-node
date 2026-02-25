@@ -80,10 +80,9 @@ describe("orchestrator", () => {
     ).rejects.toBeInstanceOf(ScrapeJobsError);
   });
 
-  it("public scrapeJobs returns structured errors for default unimplemented sites", async () => {
-    const result = await scrapeJobs({ searchTerm: "software engineer", siteName: ["indeed"] });
+  it("public scrapeJobs returns structured errors for invalid input", async () => {
+    const result = await scrapeJobs({ siteName: ["indeed"] });
     expect(result.meta.partial).toBe(true);
-    expect(result.errors[0]?.site).toBe("indeed");
+    expect(result.errors[0]?.code).toBe("INVALID_INPUT");
   });
 });
-

@@ -1,3 +1,4 @@
+import { HttpStatusError } from "../../core/httpClient";
 import type { SiteScraper } from "../../core/types";
 import type { JobPost } from "../../types";
 import {
@@ -11,6 +12,7 @@ import {
   GLASSDOOR_FALLBACK_CSRF_TOKEN,
   GLASSDOOR_JOBS_PER_PAGE,
   GLASSDOOR_MAX_PAGES,
+  GLASSDOOR_REMOTE_LOCATION,
 } from "./constants";
 import { getGlassdoorListingId, parseGlassdoorJob } from "./parser";
 
@@ -73,12 +75,19 @@ export const glassdoorScraper: SiteScraper = {
         caCert: input.caCert,
       });
     } catch (error) {
-      warnings.push(
-        `Glassdoor location lookup failed: ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      return { jobs: [], warnings };
+      if (isHttpForbidden(error)) {
+        warnings.push(
+          `Glassdoor location lookup blocked (HTTP 403); falling back to remote/default location.`,
+        );
+        resolvedLocation = { ...GLASSDOOR_REMOTE_LOCATION };
+      } else {
+        warnings.push(
+          `Glassdoor location lookup failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return { jobs: [], warnings };
+      }
     }
 
     const collected: JobPost[] = [];
@@ -169,3 +178,6 @@ export const glassdoorScraper: SiteScraper = {
   },
 };
 
+function isHttpForbidden(error: unknown): boolean {
+  return error instanceof HttpStatusError && error.status === 403;
+}

@@ -22,6 +22,11 @@ export const GLASSDOOR_GRAPHQL_HEADERS: Record<string, string> = {
   referer: `${GLASSDOOR_BASE_URL}/`,
   "apollographql-client-name": "job-search-next",
   "apollographql-client-version": "4.65.5",
+  "user-agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+  "sec-fetch-dest": "empty",
+  "sec-fetch-mode": "cors",
+  "sec-fetch-site": "same-origin",
 };
 
 export const GLASSDOOR_PAGE_HEADERS: Record<string, string> = {
@@ -29,6 +34,8 @@ export const GLASSDOOR_PAGE_HEADERS: Record<string, string> = {
     "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
   "accept-language": "en-US,en;q=0.9",
   referer: `${GLASSDOOR_BASE_URL}/`,
+  "user-agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
 };
 
 export const GLASSDOOR_SEARCH_QUERY = `
@@ -117,4 +124,3 @@ export const GLASSDOOR_DETAIL_QUERY = `
     }
   }
 `.trim();
-

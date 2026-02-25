@@ -98,9 +98,10 @@ export async function resolveGlassdoorLocation(
 
   const response = await options.http.json<GlassdoorLocationLookupItem[]>(url.toString(), {
     headers: {
+      ...GLASSDOOR_PAGE_HEADERS,
       accept: "application/json",
-      "accept-language": "en-US,en;q=0.9",
       referer: `${GLASSDOOR_BASE_URL}/`,
+      "x-requested-with": "XMLHttpRequest",
     },
     proxyUrl: options.proxyUrl,
     timeoutMs: options.timeoutMs,
@@ -286,4 +287,3 @@ function buildGlassdoorFilterParams(
 
   return filters;
 }
-
