@@ -6,3 +6,4 @@ coverage
 .env.*
 *.log
 local-test-output.csv
+.npmrc

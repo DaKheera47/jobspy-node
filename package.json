@@ -1,7 +1,7 @@
 {
   "name": "jobspy-node",
   "version": "0.1.0",
-  "description": "Independent Node.js/TypeScript job scraping library inspired by JobSpy",
+  "description": "Independent Node.js/TypeScript Jobspy ported from the original Python version. Provides a simple API to scrape job listings from various platforms.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
