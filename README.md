@@ -1,6 +1,6 @@
 # JobSpy Node (Independent TS Port)
 
-Independent Node.js/TypeScript Jobspy ported from the original Python version. Provides a simple API to scrape job listings from various platforms.
+Independent Node.js/TypeScript Jobspy ported from the original Python version. Provides a simple API to scrape job listings from various platforms. Available on npm as [jobspy-node](https://www.npmjs.com/package/jobspy-node)
 
 ## ⚠️ AI-Built Disclaimer ⚠️
 
