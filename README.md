@@ -2,6 +2,14 @@
 
 Independent Node.js/TypeScript job scraping library inspired by JobSpy.
 
+## ⚠️ AI-Built Disclaimer ⚠️
+
+This project was built practically as a one-shot by AI (with human review and testing).
+
+- Expect rough edges.
+- Please validate outputs before relying on them in production.
+- Scraper breakage can happen anytime when sites change.
+
 ## Attribution
 
 Special thanks to the JobSpy maintainers. This package is an independent Node.js/TypeScript implementation inspired by the JobSpy project and rewritten for a Node-native API (no wrapper).
@@ -40,10 +48,19 @@ console.log(toCsv(result.jobs));
 
 ## Supported Sites
 
-- LinkedIn
-- Indeed
-- Glassdoor
-- Naukri
+Currently supported websites (implemented in this package):
+
+- `linkedin.com` (LinkedIn)
+- `indeed.com` and regional Indeed domains (Indeed)
+- `glassdoor.com` (Glassdoor)
+- `naukri.com` (Naukri)
+
+Not currently supported in this package:
+
+- ZipRecruiter
+- Google Jobs
+- Bayt
+- BDJobs
 
 ## Notes
 
