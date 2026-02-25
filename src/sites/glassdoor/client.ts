@@ -12,6 +12,7 @@ import {
   GLASSDOOR_REMOTE_LOCATION,
   GLASSDOOR_SEARCH_QUERY,
 } from "./constants";
+import type { GlassdoorTlsSession } from "./tlsSession";
 import {
   getGlassdoorCursorForPage,
   mapGlassdoorLocationType,
@@ -43,6 +44,7 @@ interface GlassdoorSearchGraphqlData {
 
 interface FetchGlassdoorCommonOptions {
   http: HttpClient;
+  tlsSession?: GlassdoorTlsSession;
   proxyUrl?: string;
   timeoutMs?: number;
   caCert?: string;
@@ -70,7 +72,7 @@ export async function fetchGlassdoorCsrfToken(
   options: FetchGlassdoorCommonOptions,
 ): Promise<string | null> {
   const url = new URL(GLASSDOOR_CSRF_BOOTSTRAP_PATH, GLASSDOOR_BASE_URL).toString();
-  const response = await options.http.text(url, {
+  const response = await getGlassdoorHttp(options).text(url, {
     headers: GLASSDOOR_PAGE_HEADERS,
     proxyUrl: options.proxyUrl,
     timeoutMs: options.timeoutMs,
@@ -86,6 +88,7 @@ export async function resolveGlassdoorLocation(
   options: FetchGlassdoorCommonOptions & {
     location: string | undefined;
     isRemote: boolean;
+    csrfToken: string;
   },
 ): Promise<GlassdoorResolvedLocation> {
   if (options.isRemote || !options.location?.trim()) {
@@ -96,13 +99,8 @@ export async function resolveGlassdoorLocation(
   url.searchParams.set("maxLocationsToReturn", "10");
   url.searchParams.set("term", options.location.trim());
 
-  const response = await options.http.json<GlassdoorLocationLookupItem[]>(url.toString(), {
-    headers: {
-      ...GLASSDOOR_PAGE_HEADERS,
-      accept: "application/json",
-      referer: `${GLASSDOOR_BASE_URL}/`,
-      "x-requested-with": "XMLHttpRequest",
-    },
+  const response = await getGlassdoorHttp(options).json<GlassdoorLocationLookupItem[]>(url.toString(), {
+    headers: createGlassdoorGraphqlHeaders(options.csrfToken),
     proxyUrl: options.proxyUrl,
     timeoutMs: options.timeoutMs,
     caCert: options.caCert,
@@ -141,7 +139,7 @@ export async function fetchGlassdoorJobsPage(
     ),
   ]);
 
-  const response = await options.http.json<GlassdoorGraphqlEnvelope<GlassdoorSearchGraphqlData>[]>(
+  const response = await getGlassdoorHttp(options).json<GlassdoorGraphqlEnvelope<GlassdoorSearchGraphqlData>[]>(
     GLASSDOOR_GRAPHQL_URL,
     {
       method: "POST",
@@ -197,7 +195,7 @@ export async function fetchGlassdoorJobDescription(
     },
   ]);
 
-  const response = await options.http.json<GlassdoorGraphqlEnvelope<GlassdoorDetailGraphqlData>[]>(
+  const response = await getGlassdoorHttp(options).json<GlassdoorGraphqlEnvelope<GlassdoorDetailGraphqlData>[]>(
     GLASSDOOR_GRAPHQL_URL,
     {
       method: "POST",
@@ -228,6 +226,12 @@ export function extractGlassdoorCsrfToken(html: string): string | null {
   return match?.[1] ?? null;
 }
 
+function getGlassdoorHttp(
+  options: FetchGlassdoorCommonOptions,
+): Pick<HttpClient, "text" | "json"> {
+  return options.tlsSession ?? options.http;
+}
+
 function createGlassdoorGraphqlHeaders(csrfToken: string): Record<string, string> {
   return {
     ...GLASSDOOR_GRAPHQL_HEADERS,
@@ -248,16 +252,23 @@ function buildGlassdoorSearchOperation(
   variables: Record<string, unknown>;
   query: string;
 } {
+  const fromage =
+    input.hoursOld && Number.isFinite(input.hoursOld)
+      ? Math.max(Math.floor(input.hoursOld / 24), 1)
+      : null;
+
   const variables: Record<string, unknown> = {
     excludeJobListingIds: [],
-    keyword: input.searchTerm?.trim() || undefined,
+    keyword: input.searchTerm || undefined,
+    filterParams: buildGlassdoorFilterParams(input),
+    fromage,
+    sort: "date",
+    numJobsToShow: GLASSDOOR_JOBS_PER_PAGE,
     locationId: location.locationId,
     locationType: location.locationType,
-    numJobsToShow: GLASSDOOR_JOBS_PER_PAGE,
-    pageCursor: cursor ?? null,
-    pageNumber,
-    filterParams: buildGlassdoorFilterParams(input),
     parameterUrlInput: `IL.0,12_I${location.locationType}${location.locationId}`,
+    pageNumber,
+    pageCursor: cursor ?? null,
   };
 
   return {
@@ -271,14 +282,17 @@ function buildGlassdoorFilterParams(
   input: Pick<NormalizedScrapeJobsInput, "hoursOld" | "easyApply" | "jobType">,
 ): Array<{ filterKey: string; values: string }> {
   const filters: Array<{ filterKey: string; values: string }> = [];
+  const fromage =
+    input.hoursOld && Number.isFinite(input.hoursOld)
+      ? Math.max(Math.floor(input.hoursOld / 24), 1)
+      : null;
 
   if (input.easyApply) {
     filters.push({ filterKey: "applicationType", values: "1" });
   }
 
-  if (input.hoursOld) {
-    const days = Math.max(Math.floor(input.hoursOld / 24), 1);
-    filters.push({ filterKey: "fromAge", values: String(days) });
+  if (fromage) {
+    filters.push({ filterKey: "fromAge", values: String(fromage) });
   }
 
   if (input.jobType) {

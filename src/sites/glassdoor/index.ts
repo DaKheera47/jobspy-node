@@ -12,169 +12,203 @@ import {
   GLASSDOOR_FALLBACK_CSRF_TOKEN,
   GLASSDOOR_JOBS_PER_PAGE,
   GLASSDOOR_MAX_PAGES,
-  GLASSDOOR_REMOTE_LOCATION,
 } from "./constants";
 import { getGlassdoorListingId, parseGlassdoorJob } from "./parser";
+import { GlassdoorTlsSession } from "./tlsSession";
 
 export const glassdoorScraper: SiteScraper = {
   site: "glassdoor",
   async scrape(input, ctx) {
     const warnings: string[] = [];
     const now = ctx.now();
+    let tlsSession: GlassdoorTlsSession | undefined;
 
-    const startPage = Math.floor(input.offset / GLASSDOOR_JOBS_PER_PAGE) + 1;
-    const offsetWithinPage = input.offset % GLASSDOOR_JOBS_PER_PAGE;
-    if (startPage > GLASSDOOR_MAX_PAGES) {
-      warnings.push(
-        `Glassdoor supports up to ${GLASSDOOR_MAX_PAGES * GLASSDOOR_JOBS_PER_PAGE} results; requested offset ${input.offset} exceeds that window.`,
-      );
-      return { jobs: [], warnings };
-    }
-
-    const maxResultsFromStartPage =
-      (GLASSDOOR_MAX_PAGES - startPage + 1) * GLASSDOOR_JOBS_PER_PAGE;
-    const targetCount = Math.min(
-      input.resultsWanted + offsetWithinPage,
-      maxResultsFromStartPage,
-    );
-    if (targetCount <= 0) {
-      return { jobs: [], warnings };
-    }
-
-    let csrfToken = GLASSDOOR_FALLBACK_CSRF_TOKEN;
     try {
-      const proxySelection = ctx.proxyPool.next();
-      const fetchedToken = await fetchGlassdoorCsrfToken({
-        http: ctx.http,
-        proxyUrl: proxySelection.proxyUrl,
+      const tlsProxy = ctx.proxyPool.next();
+      tlsSession = await GlassdoorTlsSession.create({
         timeoutMs: input.timeoutMs,
-        caCert: input.caCert,
+        proxyUrl: tlsProxy.proxyUrl,
       });
-      if (fetchedToken) {
-        csrfToken = fetchedToken;
-      } else {
-        warnings.push("Glassdoor CSRF token not found in bootstrap page; using fallback token.");
-      }
     } catch (error) {
       warnings.push(
-        `Glassdoor CSRF bootstrap failed; using fallback token: ${
+        `Glassdoor TLS session setup failed; falling back to standard HTTP client: ${
           error instanceof Error ? error.message : String(error)
         }`,
       );
     }
 
-    let resolvedLocation;
     try {
-      const proxySelection = ctx.proxyPool.next();
-      resolvedLocation = await resolveGlassdoorLocation({
-        http: ctx.http,
-        location: input.location,
-        isRemote: input.isRemote,
-        proxyUrl: proxySelection.proxyUrl,
-        timeoutMs: input.timeoutMs,
-        caCert: input.caCert,
-      });
-    } catch (error) {
-      if (isHttpForbidden(error)) {
+      const startPage = Math.floor(input.offset / GLASSDOOR_JOBS_PER_PAGE) + 1;
+      const offsetWithinPage = input.offset % GLASSDOOR_JOBS_PER_PAGE;
+      if (startPage > GLASSDOOR_MAX_PAGES) {
         warnings.push(
-          `Glassdoor location lookup blocked (HTTP 403); falling back to remote/default location.`,
-        );
-        resolvedLocation = { ...GLASSDOOR_REMOTE_LOCATION };
-      } else {
-        warnings.push(
-          `Glassdoor location lookup failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
+          `Glassdoor supports up to ${GLASSDOOR_MAX_PAGES * GLASSDOOR_JOBS_PER_PAGE} results; requested offset ${input.offset} exceeds that window.`,
         );
         return { jobs: [], warnings };
       }
-    }
 
-    const collected: JobPost[] = [];
-    const seenJobIds = new Set<string>();
-    let cursor: string | undefined;
+      const maxResultsFromStartPage =
+        (GLASSDOOR_MAX_PAGES - startPage + 1) * GLASSDOOR_JOBS_PER_PAGE;
+      const targetCount = Math.min(
+        input.resultsWanted + offsetWithinPage,
+        maxResultsFromStartPage,
+      );
+      if (targetCount <= 0) {
+        return { jobs: [], warnings };
+      }
 
-    for (
-      let pageNumber = startPage;
-      pageNumber <= GLASSDOOR_MAX_PAGES && collected.length < targetCount;
-      pageNumber += 1
-    ) {
-      const pageProxy = ctx.proxyPool.next();
-
-      let page;
+      let csrfToken = GLASSDOOR_FALLBACK_CSRF_TOKEN;
       try {
-        page = await fetchGlassdoorJobsPage({
-          input,
-          location: resolvedLocation,
-          pageNumber,
-          cursor,
-          csrfToken,
+        const proxySelection = ctx.proxyPool.next();
+        const fetchedToken = await fetchGlassdoorCsrfToken({
           http: ctx.http,
-          proxyUrl: pageProxy.proxyUrl,
+          tlsSession,
+          proxyUrl: proxySelection.proxyUrl,
+          timeoutMs: input.timeoutMs,
+          caCert: input.caCert,
+        });
+        if (fetchedToken) {
+          csrfToken = fetchedToken;
+        } else {
+          warnings.push("Glassdoor CSRF token not found in bootstrap page; using fallback token.");
+        }
+      } catch (error) {
+        warnings.push(
+          `Glassdoor CSRF bootstrap failed; using fallback token: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+
+      let resolvedLocation;
+      try {
+        const proxySelection = ctx.proxyPool.next();
+        resolvedLocation = await resolveGlassdoorLocation({
+          http: ctx.http,
+          tlsSession,
+          location: input.location,
+          isRemote: input.isRemote,
+          csrfToken,
+          proxyUrl: proxySelection.proxyUrl,
           timeoutMs: input.timeoutMs,
           caCert: input.caCert,
         });
       } catch (error) {
-        warnings.push(
-          `Glassdoor page ${pageNumber} failed: ${
-            error instanceof Error ? error.message : String(error)
-          }`,
-        );
-        break;
-      }
-
-      if (page.jobs.length === 0) {
-        break;
-      }
-
-      for (const rawJob of page.jobs) {
-        const jobId = getGlassdoorListingId(rawJob);
-        if (!jobId || seenJobIds.has(jobId)) {
-          continue;
+        if (isHttpForbidden(error)) {
+          warnings.push(
+            `Glassdoor location lookup blocked (HTTP 403); returning no results rather than falling back to a broad/default location.`,
+          );
+          return { jobs: [], warnings };
+        } else {
+          warnings.push(
+            `Glassdoor location lookup failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          return { jobs: [], warnings };
         }
-        seenJobIds.add(jobId);
+      }
 
-        let detailDescriptionHtml: string | null = null;
+      const collected: JobPost[] = [];
+      const seenJobIds = new Set<string>();
+      let cursor: string | undefined;
+
+      for (
+        let pageNumber = startPage;
+        pageNumber <= GLASSDOOR_MAX_PAGES && collected.length < targetCount;
+        pageNumber += 1
+      ) {
+        const pageProxy = ctx.proxyPool.next();
+
+        let page;
         try {
-          detailDescriptionHtml = await fetchGlassdoorJobDescription({
-            http: ctx.http,
-            jobId,
+          page = await fetchGlassdoorJobsPage({
+            input,
+            location: resolvedLocation,
+            pageNumber,
+            cursor,
             csrfToken,
+            http: ctx.http,
+            tlsSession,
             proxyUrl: pageProxy.proxyUrl,
             timeoutMs: input.timeoutMs,
             caCert: input.caCert,
           });
         } catch (error) {
           warnings.push(
-            `Glassdoor detail ${jobId} failed: ${
+            `Glassdoor page ${pageNumber} failed: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          break;
+        }
+
+        if (page.jobs.length === 0) {
+          break;
+        }
+
+        for (const rawJob of page.jobs) {
+          const jobId = getGlassdoorListingId(rawJob);
+          if (!jobId || seenJobIds.has(jobId)) {
+            continue;
+          }
+          seenJobIds.add(jobId);
+
+          let detailDescriptionHtml: string | null = null;
+          try {
+            detailDescriptionHtml = await fetchGlassdoorJobDescription({
+              http: ctx.http,
+              tlsSession,
+              jobId,
+              csrfToken,
+              proxyUrl: pageProxy.proxyUrl,
+              timeoutMs: input.timeoutMs,
+              caCert: input.caCert,
+            });
+          } catch (error) {
+            warnings.push(
+              `Glassdoor detail ${jobId} failed: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+            );
+          }
+
+          const parsed = parseGlassdoorJob(rawJob, {
+            baseUrl: GLASSDOOR_BASE_URL,
+            now,
+            descriptionFormat: input.descriptionFormat,
+            descriptionHtml: detailDescriptionHtml,
+          });
+          if (!parsed) {
+            continue;
+          }
+
+          collected.push(parsed);
+          if (collected.length >= targetCount) {
+            break;
+          }
+        }
+
+        cursor = page.nextCursor;
+      }
+
+      return {
+        jobs: collected.slice(offsetWithinPage, offsetWithinPage + input.resultsWanted),
+        warnings,
+      };
+    } finally {
+      if (tlsSession) {
+        try {
+          await tlsSession.close();
+        } catch (error) {
+          warnings.push(
+            `Glassdoor TLS session cleanup failed: ${
               error instanceof Error ? error.message : String(error)
             }`,
           );
         }
-
-        const parsed = parseGlassdoorJob(rawJob, {
-          baseUrl: GLASSDOOR_BASE_URL,
-          now,
-          descriptionFormat: input.descriptionFormat,
-          descriptionHtml: detailDescriptionHtml,
-        });
-        if (!parsed) {
-          continue;
-        }
-
-        collected.push(parsed);
-        if (collected.length >= targetCount) {
-          break;
-        }
       }
-
-      cursor = page.nextCursor;
     }
-
-    return {
-      jobs: collected.slice(offsetWithinPage, offsetWithinPage + input.resultsWanted),
-      warnings,
-    };
   },
 };
 
