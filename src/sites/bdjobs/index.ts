@@ -29,6 +29,9 @@ export const bdjobsScraper: SiteScraper = {
           ctx.proxyPool.next().proxyUrl,
         );
       } catch (error) {
+        if (jobs.length === 0) {
+          throw error;
+        }
         warnings.push(
           `BDJobs page ${page} failed: ${error instanceof Error ? error.message : String(error)}`,
         );
@@ -97,4 +100,3 @@ export const bdjobsScraper: SiteScraper = {
     };
   },
 };
-

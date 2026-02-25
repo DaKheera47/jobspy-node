@@ -45,6 +45,9 @@ export const zipRecruiterScraper: SiteScraper = {
           sessionProxy,
         );
       } catch (error) {
+        if (jobs.length === 0) {
+          throw error;
+        }
         warnings.push(
           `ZipRecruiter page ${page} failed: ${error instanceof Error ? error.message : String(error)}`,
         );

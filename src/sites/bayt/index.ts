@@ -29,6 +29,9 @@ export const baytScraper: SiteScraper = {
           ctx.proxyPool.next().proxyUrl,
         );
       } catch (error) {
+        if (jobs.length === 0) {
+          throw error;
+        }
         warnings.push(
           `Bayt page ${page} failed: ${error instanceof Error ? error.message : String(error)}`,
         );
@@ -66,4 +69,3 @@ export const baytScraper: SiteScraper = {
     };
   },
 };
-

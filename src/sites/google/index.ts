@@ -36,10 +36,18 @@ export const googleScraper: SiteScraper = {
         input,
         proxySelection.proxyUrl,
       );
+      if (isGoogleChallengePage(initialHtml)) {
+        throw new Error("Google Jobs challenge page served (enablejs)");
+      }
       const parsedInitial = parseGoogleInitialJobsPage(initialHtml, { now });
       pushUniqueJobs(parsedInitial.jobs);
       forwardCursor = parsedInitial.nextCursor;
       if (!forwardCursor && jobs.length < targetCount) {
+        if (jobs.length === 0) {
+          throw new Error(
+            "Google Jobs data payload not found on initial page (likely challenge or format change)",
+          );
+        }
         warnings.push(
           "Google Jobs pagination cursor not found on the initial page; returning available results.",
         );
@@ -48,10 +56,7 @@ export const googleScraper: SiteScraper = {
       warnings.push(
         `Google Jobs initial page failed: ${error instanceof Error ? error.message : String(error)}`,
       );
-      return {
-        jobs: [],
-        warnings,
-      };
+      throw error;
     }
 
     let page = 1;
@@ -94,3 +99,11 @@ export const googleScraper: SiteScraper = {
   },
 };
 
+function isGoogleChallengePage(html: string): boolean {
+  const lowered = html.toLowerCase();
+  return (
+    lowered.includes("/httpservice/retry/enablejs") ||
+    lowered.includes("please click here if you are not redirected") ||
+    lowered.includes("<noscript>")
+  );
+}

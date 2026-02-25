@@ -224,6 +224,15 @@ function classifySiteError(site: Site, error: unknown): Omit<SiteScrapeError, "s
         cause: error,
       };
     }
+    if (error.status === 403) {
+      return {
+        code: "BLOCKED",
+        message: `${site} request blocked (HTTP 403)`,
+        retriable: true,
+        statusCode: error.status,
+        cause: error,
+      };
+    }
 
     return {
       code: "NETWORK_ERROR",
@@ -245,6 +254,19 @@ function classifySiteError(site: Site, error: unknown): Omit<SiteScrapeError, "s
     }
 
     const lowered = error.message.toLowerCase();
+    if (
+      lowered.includes("cloudflare") ||
+      lowered.includes("just a moment") ||
+      lowered.includes("enablejs") ||
+      lowered.includes("blocked")
+    ) {
+      return {
+        code: "BLOCKED",
+        message: error.message,
+        retriable: true,
+        cause: error,
+      };
+    }
     if (lowered.includes("not implemented")) {
       return {
         code: "UNKNOWN",
@@ -301,4 +323,3 @@ function buildResult(params: {
 
   return ScrapeJobsResultSchema.parse(result);
 }
-
