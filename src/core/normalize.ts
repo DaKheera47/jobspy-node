@@ -31,7 +31,6 @@ export function normalizeInput(input: ScrapeJobsInput = {}): NormalizedScrapeJob
   return {
     siteName: uniqueSites,
     searchTerm: parsed.searchTerm,
-    googleSearchTerm: parsed.googleSearchTerm,
     location: parsed.location,
     distance: parsed.distance ?? DEFAULTS.distance,
     isRemote: parsed.isRemote ?? DEFAULTS.isRemote,

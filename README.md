@@ -18,7 +18,7 @@ npm install jobspy-node
 import { scrapeJobs, toCsv } from "jobspy-node";
 
 const result = await scrapeJobs({
-  siteName: ["indeed", "linkedin", "zip_recruiter"],
+  siteName: ["indeed", "linkedin", "glassdoor"],
   searchTerm: "software engineer",
   location: "San Francisco, CA",
   resultsWanted: 10,
@@ -42,12 +42,8 @@ console.log(toCsv(result.jobs));
 
 - LinkedIn
 - Indeed
-- ZipRecruiter
 - Glassdoor
-- Google Jobs
-- Bayt
 - Naukri
-- BDJobs
 
 ## Notes
 
@@ -59,4 +55,3 @@ console.log(toCsv(result.jobs));
 ## Responsible Use
 
 Use this library responsibly and in compliance with site terms, robots policies, and local laws.
-

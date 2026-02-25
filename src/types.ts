@@ -3,12 +3,8 @@ import { z } from "zod";
 export const SITE_VALUES = [
   "linkedin",
   "indeed",
-  "zip_recruiter",
   "glassdoor",
-  "google",
-  "bayt",
   "naukri",
-  "bdjobs",
 ] as const;
 
 export type Site = (typeof SITE_VALUES)[number];
@@ -114,7 +110,6 @@ export interface SiteScrapeMeta {
 export interface ScrapeJobsInput {
   siteName?: Site | Site[];
   searchTerm?: string;
-  googleSearchTerm?: string;
   location?: string;
   distance?: number;
   isRemote?: boolean;
@@ -140,7 +135,6 @@ export interface ScrapeJobsInput {
 export interface NormalizedScrapeJobsInput {
   siteName: Site[];
   searchTerm?: string;
-  googleSearchTerm?: string;
   location?: string;
   distance: number;
   isRemote: boolean;
@@ -262,7 +256,6 @@ export const SiteScrapeMetaSchema = z.object({
 export const ScrapeJobsInputSchema = z.object({
   siteName: z.union([SiteSchema, z.array(SiteSchema)]).optional(),
   searchTerm: z.string().optional(),
-  googleSearchTerm: z.string().optional(),
   location: z.string().optional(),
   distance: z.number().int().nonnegative().optional(),
   isRemote: z.boolean().optional(),

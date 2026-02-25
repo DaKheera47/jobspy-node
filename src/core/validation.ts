@@ -3,8 +3,8 @@ import type { NormalizedScrapeJobsInput } from "../types";
 export function validateGlobalInput(input: NormalizedScrapeJobsInput): string[] {
   const errors: string[] = [];
 
-  if (!input.searchTerm && !input.googleSearchTerm) {
-    errors.push("Provide at least one of searchTerm or googleSearchTerm.");
+  if (!input.searchTerm) {
+    errors.push("Provide searchTerm.");
   }
 
   if (input.resultsWanted <= 0) {
@@ -45,4 +45,3 @@ export function validateLinkedInConstraints(
 
   return errors;
 }
-
